@@ -247,8 +247,16 @@ func (e *engine) build(ctx context.Context, s *jfSession, paused bool) *discord.
 		a.Assets.SmallImage, a.Assets.SmallText = jellyfinPNG, "Jellyfin"
 	}
 	if paused {
+		// Discord's Watching/Listening card always draws a timer and shows
+		// 00:00 without timestamps, and it can't freeze a progress bar. While
+		// paused use the plain card (no timer) and say where playback stopped.
+		a.Type, a.StatusDisplayType = discord.TypePlaying, discord.DisplayName
 		a.Assets.SmallText = "Paused"
-		a.State = clip(join(" · ", a.State, "Paused"))
+		at := "Paused"
+		if it.RunTimeTicks > 0 {
+			at = fmt.Sprintf("Paused at %s / %s", clock(s.PlayState.PositionTicks/10000), clock(it.RunTimeTicks/10000))
+		}
+		a.State = clip(join(" · ", a.State, at))
 	} else if it.RunTimeTicks > 0 {
 		pos := s.PlayState.PositionTicks / 10000
 		start := time.Now().UnixMilli() - pos
@@ -424,4 +432,13 @@ func abs(v int64) int64 {
 		return -v
 	}
 	return v
+}
+
+// clock formats milliseconds as 12:34 or 1:02:03.
+func clock(ms int64) string {
+	s := ms / 1000
+	if s >= 3600 {
+		return fmt.Sprintf("%d:%02d:%02d", s/3600, s/60%60, s%60)
+	}
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
 }

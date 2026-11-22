@@ -22,7 +22,7 @@ Play something and check your Discord profile. The Discord desktop app must be r
 | Music | **Listening to** Track · artists, album cover |
 
 - Posters come from TMDB, through the artwork lookup Jellyfin already does. Music covers come from iTunes. Image links never point at your server, so your server address is never shown on Discord.
-- The progress bar follows pauses and seeking. While paused it shows "Paused", and the status hides after 5 minutes paused.
+- The progress bar follows pauses and seeking. While paused it shows "Paused at 12:34 / 22:16" with no timer (Discord can't freeze its progress bar), and the status hides after 5 minutes paused.
 - It only shows playback in Jellyfin Desktop on this PC, not your TV or phone.
 
 ## Settings
