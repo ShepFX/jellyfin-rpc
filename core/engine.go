@@ -247,9 +247,9 @@ func (e *engine) build(ctx context.Context, s *jfSession, paused bool) *discord.
 		a.Assets.SmallImage, a.Assets.SmallText = jellyfinPNG, "Jellyfin"
 	}
 	if paused {
-		// Discord's Watching/Listening card always draws a timer and shows
-		// 00:00 without timestamps, and it can't freeze a progress bar. While
-		// paused use the plain card (no timer) and say where playback stopped.
+		// Discord can't freeze a progress bar and shows a timer on every card.
+		// While paused use the plain card, say where playback stopped, and let
+		// the timer count how long it has been paused.
 		a.Type, a.StatusDisplayType = discord.TypePlaying, discord.DisplayName
 		a.Assets.SmallText = "Paused"
 		at := "Paused"
@@ -257,6 +257,10 @@ func (e *engine) build(ctx context.Context, s *jfSession, paused bool) *discord.
 			at = fmt.Sprintf("Paused at %s / %s", clock(s.PlayState.PositionTicks/10000), clock(it.RunTimeTicks/10000))
 		}
 		a.State = clip(join(" · ", a.State, at))
+		// Discord shows a timer on every card; make it count time spent paused.
+		if !e.pausedAt.IsZero() {
+			a.Timestamps = &discord.Timestamps{Start: e.pausedAt.UnixMilli()}
+		}
 	} else if it.RunTimeTicks > 0 {
 		pos := s.PlayState.PositionTicks / 10000
 		start := time.Now().UnixMilli() - pos
