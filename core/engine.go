@@ -21,6 +21,7 @@ import (
 
 const (
 	pollEvery   = 2 * time.Second
+	resendEvery = time.Minute
 	jellyfinPNG = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/ios/icon.png"
 	maxURLLen   = 256 // Discord rejects longer image URLs
 )
@@ -35,6 +36,7 @@ type engine struct {
 	art        map[string]string // item id -> public image URL ("" = none)
 	series     map[string]map[string]string
 	shown      *discord.Activity
+	sentAt     time.Time // last time the activity was sent to Discord
 	pausedAt   time.Time
 	lastItem   string
 	lastLogErr string
@@ -336,10 +338,12 @@ func (e *engine) itunes(ctx context.Context, artist, album string) string {
 	return strings.Replace(r.Results[0].Art, "100x100bb", "512x512bb", 1)
 }
 
-// show sends the activity to Discord only when it changed (Discord rate
-// limits presence updates).
+// show sends the activity to Discord when it changed, and re-sends it every
+// minute anyway: Discord drops it on its own side (after sleep, a network blip
+// or a Discord reconnect) and nothing here would notice. Once a minute stays
+// well inside Discord's rate limit.
 func (e *engine) show(a *discord.Activity) {
-	if same(e.shown, a) {
+	if same(e.shown, a) && (a == nil || time.Since(e.sentAt) < resendEvery) {
 		return
 	}
 	desc := "cleared"
@@ -355,8 +359,10 @@ func (e *engine) show(a *discord.Activity) {
 		e.shown = nil
 		return
 	}
-	log.Printf("presence: %s", desc)
-	e.shown = a
+	if !same(e.shown, a) {
+		log.Printf("presence: %s", desc)
+	}
+	e.shown, e.sentAt = a, time.Now()
 }
 
 // same treats activities as equal when only the progress bar drifted a little.

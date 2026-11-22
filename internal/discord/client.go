@@ -162,11 +162,12 @@ func (e *RPCError) Error() string { return fmt.Sprintf("discord: %s (code %d)", 
 
 func (c *Client) command(cmd string, args any) error {
 	nonce := newNonce()
+	// deadline before the write too: a Discord that stopped reading must not hang us forever
+	_ = c.conn.SetDeadline(time.Now().Add(5 * time.Second))
+	defer c.conn.SetDeadline(time.Time{})
 	if err := writeFrame(c.conn, opFrame, map[string]any{"cmd": cmd, "args": args, "nonce": nonce}); err != nil {
 		return err
 	}
-	_ = c.conn.SetDeadline(time.Now().Add(5 * time.Second))
-	defer c.conn.SetDeadline(time.Time{})
 	for {
 		op, body, err := readFrame(c.conn)
 		if err != nil {
